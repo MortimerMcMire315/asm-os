@@ -1,3 +1,7 @@
 *.o
 .git/*
 printroutines/*
+*.swp
+*.swo
+*.swn
+kernel.img
