@@ -6,3 +6,4 @@ printroutines/*
 *.swn
 kernel.img
 os.iso
+isodir/boot/os.bin

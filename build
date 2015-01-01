@@ -1,8 +1,9 @@
-export PATH="$(pwd)/compiler/bin:$PATH"
-
 #!/bin/bash
-nasm -felf32 boot.asm -o boot.o
-i686-elf-gcc -c kernel.c -o kernel.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
-i686-elf-gcc -T linker.ld -o os.bin -ffreestanding -O2 -nostdlib boot.o kernel.o -lgcc
-mv os.bin isodir/boot/os.bin
-grub-mkrescue -o os.iso isodir
+
+export PATH="$(pwd)/compiler/bin:$PATH"
+nasm -felf32 boot.asm -o boot.o || exit 1
+nasm -felf32 kernel.asm -o kernel.o || exit 1
+#i686-elf-gcc -c kernel.c -o kernel.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
+i686-elf-gcc -T linker.ld -o os.bin -ffreestanding -O2 -nostdlib boot.o kernel.o -lgcc || exit 1
+mv os.bin isodir/boot/os.bin || exit 1
+grub-mkrescue -o os.iso isodir || exit 1
