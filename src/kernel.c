@@ -74,6 +74,7 @@ void terminal_initialize()
         for ( size_t x = 0; x < VGA_WIDTH; x++ )
         {
             const size_t index = y * VGA_WIDTH + x;
+            
             terminal_buffer[index] = make_vgaentry(' ', terminal_color);
         }
     }

@@ -9,27 +9,43 @@ FILES=$(for i in $(find src | grep "\.asm$"); do echo $i; done)
 
 SUCCESS=1
 
+echo "===> Assembling files..."
 for f in $FILES; do
     FNAME=$(basename $f .asm)
-    echo "===> Assembling ${FNAME}.asm..."
-    nasm -f elf32 -o "obj/${FNAME}.o" $f || SUCCESS=0
+
+    cmd="nasm -f elf32 -o "obj/${FNAME}.o" $f"
+    echo $cmd
+    $cmd || SUCCESS=0
+
     if [ $SUCCESS -eq 0 ]; then
         echo "Assembly failure!"
         exit 1
     fi
 done
+echo ""
 
 OBJS=$(for i in $FILES; do echo "obj/$(basename $i)"; done)
 
 echo "===> Linking..."
-i686-elf-gcc -T linker.ld -o isodir/boot/os.bin -ffreestanding -O2 -nostdlib $(echo $OBJS | sed -re 's/\.asm/.o/g') || SUCCESS=0
+cmd="i686-elf-gcc -T linker.ld -o isodir/boot/os.bin -ffreestanding -O2 -nostdlib $(echo $OBJS | sed -re 's/\.asm/.o/g')"
+echo $cmd
+$cmd || SUCCESS=0
+
 if [ $SUCCESS -eq 0 ]; then
     echo "Linking failure!"
     exit 1
 fi
 
+echo ""
 echo "===> Creating bootable disk..."
-grub-mkrescue -o os.iso isodir || exit 1
+cmd="grub-mkrescue -o os.iso isodir"
+echo $cmd
+$cmd || SUCCESS=0
+
+if [ $SUCCESS -eq 0 ]; then
+    echo "Failure creating disk!"
+    exit 1
+fi
 
 echo "===> Cleaning up..."
 rm obj/*.o
