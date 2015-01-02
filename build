@@ -1,9 +1,35 @@
 #!/bin/bash
-
 export PATH="$(pwd)/compiler/bin:$PATH"
-nasm -felf32 boot.asm -o boot.o || exit 1
-nasm -felf32 kernel.asm -o kernel.o || exit 1
-#i686-elf-gcc -c kernel.c -o kernel.o -std=gnu99 -ffreestanding -O2 -Wall -Wextra
-i686-elf-gcc -T linker.ld -o os.bin -ffreestanding -O2 -nostdlib boot.o kernel.o -lgcc || exit 1
-mv os.bin isodir/boot/os.bin || exit 1
+
+if [ ! -d "obj/" ]; then
+    mkdir obj
+fi
+
+FILES=$(for i in $(find src | grep "\.asm$"); do echo $i; done)
+
+SUCCESS=1
+
+for f in $FILES; do
+    FNAME=$(basename $f .asm)
+    echo "===> Assembling ${FNAME}.asm..."
+    nasm -f elf32 -o "obj/${FNAME}.o" $f || SUCCESS=0
+    if [ $SUCCESS -eq 0 ]; then
+        echo "Assembly failure!"
+        exit 1
+    fi
+done
+
+OBJS=$(for i in $FILES; do echo "obj/$(basename $i)"; done)
+
+echo "===> Linking..."
+i686-elf-gcc -T linker.ld -o isodir/boot/os.bin -ffreestanding -O2 -nostdlib $(echo $OBJS | sed -re 's/\.asm/.o/g') || SUCCESS=0
+if [ $SUCCESS -eq 0 ]; then
+    echo "Linking failure!"
+    exit 1
+fi
+
+echo "===> Creating bootable disk..."
 grub-mkrescue -o os.iso isodir || exit 1
+
+echo "===> Cleaning up..."
+rm obj/*.o
