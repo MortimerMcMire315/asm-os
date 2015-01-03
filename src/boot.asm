@@ -33,22 +33,17 @@ section .text
     extern terminal_writestring
     extern terminal_putchar
     extern terminal_writestring_withcolor
+    extern terminal_put_number
 
 
 kernel_main:
     call    terminal_cls
 
-    push    dword 0
-    push    dword 10
-    push    dword st
-    call    terminal_writestring_withcolor
-    add     esp, 12
-
-    push    dword 0
-    push    dword 3
-    push    dword st
-    call    terminal_writestring_withcolor
-    add     esp, 12
+    mov     eax, 1456
+    neg     eax
+    push    dword eax
+    call    terminal_put_number
+    add     esp, 4
 
     ret
 

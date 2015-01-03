@@ -32,6 +32,7 @@ global terminal_putentryat
 global terminal_writestring
 global terminal_writestring_withcolor
 global terminal_putchar
+global terminal_put_number
 
 
 ;===============================================================================
@@ -424,3 +425,65 @@ terminal_writestring_withcolor:
         mov     esp, ebp
         pop     ebp
         ret
+
+;===============================================================================
+;    PARAMETERS:
+;        int number - The number to print
+;        int row 
+;        int col
+;===============================================================================
+terminal_put_number:
+    push    ebp
+    mov     ebp, esp
+    
+    sub     esp, 4
+
+    %define num [ebp+8]
+    %define row [ebp+12]
+    %define col [ebp+16]
+    %define counter [ebp-4]
+
+    mov     eax, num
+    cmp     eax, 0
+    jge     .realbegin
+
+    push    eax
+    push    dword '-'
+    call    terminal_putchar
+    add     esp, 4
+    pop     eax
+    neg     eax
+
+ .realbegin:
+    mov     dword counter, 0  ;counter
+    mov     ebx, 10
+
+ .divloop:
+    cdq
+    div     ebx
+    push    dword edx
+    add     dword counter, 1
+    cmp     eax, 0
+    jne     .divloop
+
+ .printloop:
+    pop     eax
+    add     eax, 48
+
+    push    eax
+    call    terminal_putchar
+    add     esp, 4
+
+    sub     dword counter, 1
+    mov     dword ecx, counter
+    cmp     ecx, 0
+    jne     .printloop
+
+    %undef  num
+    %undef  row
+    %undef  col
+    %undef  counter
+
+    mov     esp, ebp
+    pop     ebp
+    ret
