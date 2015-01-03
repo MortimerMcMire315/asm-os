@@ -37,10 +37,6 @@ section .text
 
 
 kernel_main:
-    ;push    dword -520093697
-    ;call    vga_put_dec
-    ;add     esp, 4
-    
     ret
 
 _start:

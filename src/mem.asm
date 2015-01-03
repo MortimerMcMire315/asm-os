@@ -95,7 +95,7 @@ map_mem:
     push    edx
     mov     eax, [boot_device]
     push    dword eax
-    call    vga_put_dec
+    call    vga_put_unsigned_hex
     add     esp, 4
     call    vga_put_newline
     pop     edx

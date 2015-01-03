@@ -514,10 +514,11 @@ vga_put_unsigned_hex:
 
     mov     eax, num
     mov     dword counter, 0  ;counter
-    mov     ebx, 16
+    mov     ebx, 0x10
 
  .divloop:
-    cdq
+    xor     edx, edx
+    ;cdq
     div     ebx
     push    dword edx
     add     dword counter, 1
@@ -527,7 +528,7 @@ vga_put_unsigned_hex:
  .printloop:
     pop     eax
     cmp     eax, 10
-    jl      .doprint
+    jb      .doprint
 
     add     eax, 7
 
