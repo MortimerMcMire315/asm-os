@@ -1,3 +1,5 @@
+BITS 32
+
 ;Multiboot header constants
 MBALIGN     equ     1<<0                ;align modules on page boundaries
 MEMINFO     equ     1<<1                ;provide memory map
@@ -25,31 +27,29 @@ section .bootstrap_stack
 
 section .text
     global _start
-    extern make_vgaentry
-    extern make_color
-    extern strlen
-    extern terminal_cls
-    extern terminal_putentryat
-    extern terminal_writestring
-    extern terminal_putchar
-    extern terminal_writestring_withcolor
-    extern terminal_put_number
+    extern vga_cls
+    extern vga_writestring
+    extern vga_writestring_withcolor
+    extern vga_put_dec
+    extern vga_put_newline
+    extern vga_put_unsigned_hex
+    extern map_mem
 
 
 kernel_main:
-    call    terminal_cls
-
-    mov     eax, 1456
-    neg     eax
-    push    dword eax
-    call    terminal_put_number
-    add     esp, 4
-
+    ;push    dword -520093697
+    ;call    vga_put_dec
+    ;add     esp, 4
+    
     ret
 
 _start:
-
     mov esp, stack_top
+
+    push    dword ebx
+    call    map_mem
+    add     esp, 4
+
     call kernel_main
 
     cli

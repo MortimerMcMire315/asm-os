@@ -1,3 +1,5 @@
+BITS 32
+
 VGA_PTR        equ  0xB8000
 VGA_WIDTH      equ  80
 VGA_HEIGHT     equ  25
@@ -23,16 +25,21 @@ section .bss
     global_term_row:    resd 1
     global_term_col:    resd 1
 
+section .data
+    hex_prefix:      db  '0x'
+
 section .text
 global make_vgaentry
 global make_color
 global strlen
-global terminal_cls
-global terminal_putentryat
-global terminal_writestring
-global terminal_writestring_withcolor
-global terminal_putchar
-global terminal_put_number
+global vga_cls
+global vga_putentryat
+global vga_writestring
+global vga_writestring_withcolor
+global vga_putchar
+global vga_put_dec
+global vga_put_newline
+global vga_put_unsigned_hex
 
 
 ;===============================================================================
@@ -114,7 +121,7 @@ strlen:
 ;    RETURNS:
 ;        Nothing, but clears the VGA terminal.
 ;===============================================================================
-terminal_cls:
+vga_cls:
     push    ebp
     mov     ebp, esp
     sub     esp, 8
@@ -185,7 +192,7 @@ terminal_cls:
 ;    RETURNS:
 ;       Nothing, but puts the character on the screen.       
 ;===============================================================================
-terminal_putentryat_withvgacolor:
+vga_putentryat_withvgacolor:
     push    ebp
     mov     ebp, esp
 
@@ -228,7 +235,7 @@ terminal_putentryat_withvgacolor:
 ;
 ;    RETURNS:
 ;===============================================================================
-terminal_putentryat:
+vga_putentryat:
     push    ebp
     mov     ebp, esp
 
@@ -247,7 +254,7 @@ terminal_putentryat:
     push    dword term_row
     push    eax
     push    dword c
-    call    terminal_putentryat_withvgacolor
+    call    vga_putentryat_withvgacolor
     add     esp, 16
 
     %undef c
@@ -298,7 +305,7 @@ check_global_cursor_loc:
 ;        
 ;    Plots a character at the global terminal row and column.
 ;===============================================================================
-terminal_putchar:
+vga_putchar:
         push    ebp
         mov     ebp, esp
 
@@ -309,7 +316,7 @@ terminal_putchar:
         push    dword BLACK
         push    dword LIGHT_GREY
         push    dword char
-        call    terminal_putentryat
+        call    vga_putentryat
         add     esp, 20
 
         ;increase the global terminal column.
@@ -333,7 +340,7 @@ terminal_putchar:
 ;        
 ;    Plots a character with the given colors at the global terminal row and col.
 ;===============================================================================
-terminal_putchar_withcolor:
+vga_putchar_withcolor:
         push    ebp
         mov     ebp, esp
 
@@ -342,7 +349,7 @@ terminal_putchar_withcolor:
         push    dword [ebp+16]
         push    dword [ebp+12]
         push    dword [ebp+8]
-        call    terminal_putentryat
+        call    vga_putentryat
         add     esp, 20
 
         mov     dword edx, [global_term_col]
@@ -362,7 +369,7 @@ terminal_putchar_withcolor:
 ;        
 ;    Plots the string at the global terminal row and column.
 ;===============================================================================
-terminal_writestring:
+vga_writestring:
         push    ebp
         mov     ebp, esp
 
@@ -376,7 +383,7 @@ terminal_writestring:
         and     ebx, 0
         mov     byte bl, [eax]
         push    dword ebx
-        call    terminal_putchar
+        call    vga_putchar
         add     esp, 4
 
         add     dword string_ptr, 1
@@ -397,7 +404,7 @@ terminal_writestring:
 ;        byte bgcolor - Background color
 ;        
 ;===============================================================================
-terminal_writestring_withcolor:
+vga_writestring_withcolor:
         push    ebp
         mov     ebp, esp
 
@@ -413,7 +420,7 @@ terminal_writestring_withcolor:
         push    dword [ebp+16]
         push    dword [ebp+12]
         push    dword ebx
-        call    terminal_putchar_withcolor
+        call    vga_putchar_withcolor
         add     esp, 12
 
         add     dword string_ptr, 1
@@ -429,18 +436,16 @@ terminal_writestring_withcolor:
 ;===============================================================================
 ;    PARAMETERS:
 ;        int number - The number to print
-;        int row 
-;        int col
+;
+;    Print a decimal number.
 ;===============================================================================
-terminal_put_number:
+vga_put_dec:
     push    ebp
     mov     ebp, esp
     
     sub     esp, 4
 
     %define num [ebp+8]
-    %define row [ebp+12]
-    %define col [ebp+16]
     %define counter [ebp-4]
 
     mov     eax, num
@@ -449,7 +454,7 @@ terminal_put_number:
 
     push    eax
     push    dword '-'
-    call    terminal_putchar
+    call    vga_putchar
     add     esp, 4
     pop     eax
     neg     eax
@@ -471,7 +476,7 @@ terminal_put_number:
     add     eax, 48
 
     push    eax
-    call    terminal_putchar
+    call    vga_putchar
     add     esp, 4
 
     sub     dword counter, 1
@@ -480,10 +485,85 @@ terminal_put_number:
     jne     .printloop
 
     %undef  num
-    %undef  row
-    %undef  col
     %undef  counter
 
+    mov     esp, ebp
+    pop     ebp
+    ret
+
+;===============================================================================
+;    PARAMETERS:
+;        int num - The number to print
+;        
+;    Print an unsigned hex number.
+;===============================================================================
+vga_put_unsigned_hex:
+    push    ebp
+    mov     ebp, esp
+    
+    sub     esp, 4
+
+    %define num [ebp+8]
+    %define counter [ebp-4]
+
+    ;Print 0x
+    mov     eax, hex_prefix
+    push    dword eax
+    call    vga_writestring
+    add     esp, 4
+
+    mov     eax, num
+    mov     dword counter, 0  ;counter
+    mov     ebx, 16
+
+ .divloop:
+    cdq
+    div     ebx
+    push    dword edx
+    add     dword counter, 1
+    cmp     eax, 0
+    jne     .divloop
+
+ .printloop:
+    pop     eax
+    cmp     eax, 10
+    jl      .doprint
+
+    add     eax, 7
+
+ .doprint:
+    add     eax, 48
+    push    eax
+    call    vga_putchar
+    add     esp, 4
+
+    sub     dword counter, 1
+    mov     dword ecx, counter
+    cmp     ecx, 0
+    jne     .printloop
+
+    %undef  num
+    %undef  counter
+
+    mov     esp, ebp
+    pop     ebp
+    ret
+;===============================================================================
+;    PARAMETERS:
+;        None
+;        
+;    Print a newline in the VGA terminal.
+;===============================================================================
+vga_put_newline:
+    push    ebp
+    mov     ebp, esp
+
+    mov     eax, [global_term_row]
+    inc     eax
+    mov     dword [global_term_row], eax
+
+    mov     dword [global_term_col], 0
+    
     mov     esp, ebp
     pop     ebp
     ret
