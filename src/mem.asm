@@ -50,10 +50,11 @@ map_mem:
     ;call    dump_multiboot_info
     ;add     esp, 4
 
-    add     edx, 48
-
+    add     edx, 44 ;location of mmap_length
     push    dword [edx]
-    call    num_memorymaps
+    add     edx, 4
+    push    dword [edx] ;location of mmap_addr
+    call    dump_memorymaps
     add     esp, 4
 
     endfun
@@ -61,13 +62,19 @@ map_mem:
 ;===============================================================================
 ;    PARAMETERS:
 ;        memory_map* mmap_addr
+;        int mmap_length
 ;        
 ;    RETURNS:
 ;        The number of memory map entries to expect
 ;===============================================================================
-num_memorymaps:
+dump_memorymaps:
     beginfun
+    sub     esp, 4
+    %define mmap_start [ebp-4]
+
     mov     edx, [ebp+8]
+
+    mov     mmap_start, edx
 
     %macro mmap_info_line 3
     push    edx
@@ -90,15 +97,55 @@ num_memorymaps:
     mmap_info_line  edx+20, unsigned_hex, type
     %endmacro
 
-    add     edx, 72
-    mmap_info
-    call    vga_put_newline
-    ;add     edx, 24
-    ;mmap_info
-    ;call    vga_put_newline
-    ;add     edx, 24
-    ;mmap_info
-    ;call    vga_put_newline
+    ;while edx < mmap_length:
+    .l1:
+        ;if(EDX - mmap_start) >= mmap_length, jump out of the loop.
+        mov     ecx, edx
+        sub     ecx, mmap_start
+
+        cmp     ecx, [ebp+12]
+        jae     .endloop
+
+        push    dword edx
+        call    is_usable_mem
+
+        cmp     eax, 1
+        jne     .noprint
+
+        mmap_info_line edx+4, unsigned_hex, base_low
+        mmap_info_line edx+12, unsigned_hex, len_low
+        mmap_info_line edx+20, unsigned_hex, type
+        call    vga_put_newline
+        pop     edx
+
+    .noprint:
+        mov     ecx, [edx]
+        add     edx, 4
+        add     edx, ecx  ;EDX += this_mmap->size
+        jmp     .l1
+
+    .endloop:
+
+    endfun
+
+;===============================================================================
+;    PARAMETERS:
+;       mmap_struct* m;
+;        
+;    RETURNS:
+;       EAX = 1 if the described memory segment is deemed usable.
+;===============================================================================
+is_usable_mem:
+    beginfun
+    mov     eax, [ebp+8]
+    mov     eax, [eax+20]
+    cmp     eax, 1
+    je      .end
+
+    .false:
+    mov     eax, 0
+
+    .end:
 
     endfun
 

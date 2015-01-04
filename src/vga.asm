@@ -487,6 +487,7 @@ vga_put_unsigned_hex:
     %undef  num
     %undef  counter
     endfun
+
 ;===============================================================================
 ;    PARAMETERS:
 ;        None
