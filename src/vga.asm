@@ -1,3 +1,5 @@
+%include "src/defs.asm"
+
 BITS 32
 
 VGA_PTR        equ  0xB8000
@@ -51,18 +53,13 @@ global vga_put_unsigned_hex
 ;       EAX = the VGA code to write into memory
 ;===============================================================================
 make_vgaentry:
-    push    ebp
-    mov     ebp, esp
-
+    beginfun
     mov     eax, [ebp+8]    ;eax = char
     mov     ecx, [ebp+12]   ;ecx = color
 
     shl     ecx, 8
     or      eax, ecx
-
-    mov     esp, ebp
-    pop     ebp
-    ret
+    endfun
 
 ;===============================================================================
 ;    PARAMETERS:
@@ -73,9 +70,7 @@ make_vgaentry:
 ;        EAX = complete VGA color code
 ;===============================================================================
 make_color:
-    push    ebp
-    mov     ebp, esp
-
+    beginfun
     mov     eax, [ebp+8]    ;foreground color
     mov     edx, [ebp+12]   ;background color
 
@@ -83,10 +78,7 @@ make_color:
     shl     edx, 4          ;stick the bg color in the higher 4 bits
 
     or      eax, edx
-
-    mov     esp, ebp
-    pop     ebp
-    ret
+    endfun
 
 ;===============================================================================
 ;    PARAMETERS:
@@ -96,9 +88,7 @@ make_color:
 ;        EAX = string length
 ;===============================================================================
 strlen:
-    push    ebp
-    mov     ebp, esp
-
+    beginfun
     mov     edx, [ebp+8]   ;string pointer
     mov     eax, 0
 
@@ -109,10 +99,7 @@ strlen:
         jmp     .loop
 
     .break:
-    
-    mov     esp, ebp
-    pop     ebp
-    ret
+    endfun
 
 ;===============================================================================
 ;    PARAMETERS:
@@ -122,8 +109,7 @@ strlen:
 ;        Nothing, but clears the VGA terminal.
 ;===============================================================================
 vga_cls:
-    push    ebp
-    mov     ebp, esp
+    beginfun
     sub     esp, 8
 
     %define  term_row  [ebp-4]
@@ -177,10 +163,7 @@ vga_cls:
     %undef term_row
     %undef term_col
     %undef color
-
-    mov esp, ebp
-    pop ebp
-    ret
+    endfun
 
 ;===============================================================================
 ;    PARAMETERS:
@@ -193,9 +176,7 @@ vga_cls:
 ;       Nothing, but puts the character on the screen.       
 ;===============================================================================
 vga_putentryat_withvgacolor:
-    push    ebp
-    mov     ebp, esp
-
+    beginfun
     %define char  [ebp+8]
     %define color [ebp+12]
     %define row   [ebp+16]
@@ -220,10 +201,7 @@ vga_putentryat_withvgacolor:
     %undef  color
     %undef  row
     %undef  col
-
-    mov      esp, ebp
-    pop      ebp
-    ret
+    endfun
 
 ;===============================================================================
 ;    PARAMETERS:
@@ -236,9 +214,7 @@ vga_putentryat_withvgacolor:
 ;    RETURNS:
 ;===============================================================================
 vga_putentryat:
-    push    ebp
-    mov     ebp, esp
-
+    beginfun
     %define c           [ebp+8]
     %define fgcolor     [ebp+12]
     %define bgcolor     [ebp+16]
@@ -262,10 +238,7 @@ vga_putentryat:
     %undef bgcolor
     %undef term_row
     %undef term_col
-
-    mov     esp, ebp
-    pop     ebp
-    ret
+    endfun
 
 
 ;===============================================================================
@@ -277,8 +250,7 @@ vga_putentryat:
 ;    first column of the screen.
 ;===============================================================================
 check_global_cursor_loc:
-        push    ebp
-        mov     ebp, esp
+        beginfun
 
         cmp     dword [global_term_col], VGA_WIDTH
         jl      .checkrow
@@ -295,9 +267,7 @@ check_global_cursor_loc:
         mov     dword [global_term_row], 0
 
     .end:
-        mov     esp, ebp
-        pop     ebp
-        ret
+        endfun
 
 ;===============================================================================
 ;    PARAMETERS:
@@ -306,9 +276,7 @@ check_global_cursor_loc:
 ;    Plots a character at the global terminal row and column.
 ;===============================================================================
 vga_putchar:
-        push    ebp
-        mov     ebp, esp
-
+        beginfun
         %define char [ebp+8]
 
         push    dword [global_term_col]
@@ -326,11 +294,8 @@ vga_putchar:
 
         call    check_global_cursor_loc
 
-        mov     esp, ebp
-        pop     ebp
-
         %undef char
-        ret
+        endfun
 
 ;===============================================================================
 ;    PARAMETERS:
@@ -341,9 +306,7 @@ vga_putchar:
 ;    Plots a character with the given colors at the global terminal row and col.
 ;===============================================================================
 vga_putchar_withcolor:
-        push    ebp
-        mov     ebp, esp
-
+        beginfun
         push    dword [global_term_col]
         push    dword [global_term_row]
         push    dword [ebp+16]
@@ -357,11 +320,7 @@ vga_putchar_withcolor:
         mov     dword [global_term_col], edx
 
         call    check_global_cursor_loc
-
-        mov     esp, ebp
-        pop     ebp
-
-        ret
+        endfun
 
 ;===============================================================================
 ;    PARAMETERS:
@@ -370,12 +329,10 @@ vga_putchar_withcolor:
 ;    Plots the string at the global terminal row and column.
 ;===============================================================================
 vga_writestring:
-        push    ebp
-        mov     ebp, esp
+    beginfun
+    %define string_ptr [ebp+8]
 
-        %define string_ptr [ebp+8]
-
-    .l1:
+  .l1:
         mov     eax, string_ptr
         cmp     byte [eax], 0
         je      .end
@@ -389,13 +346,9 @@ vga_writestring:
         add     dword string_ptr, 1
         jmp     .l1
 
-    .end:
-        mov     esp, ebp
-        pop     ebp
-    
-        %undef string_ptr
-
-        ret
+  .end:
+    %undef string_ptr
+    endfun
 
 ;===============================================================================
 ;    PARAMETERS:
@@ -405,10 +358,8 @@ vga_writestring:
 ;        
 ;===============================================================================
 vga_writestring_withcolor:
-        push    ebp
-        mov     ebp, esp
-
-        %define string_ptr [ebp+8]
+    beginfun
+    %define string_ptr [ebp+8]
 
     .l1:
         mov     eax, string_ptr
@@ -426,12 +377,9 @@ vga_writestring_withcolor:
         add     dword string_ptr, 1
         jmp     .l1
 
-    .end:
-        %undef string_ptr
-
-        mov     esp, ebp
-        pop     ebp
-        ret
+  .end:
+    %undef string_ptr
+    endfun
 
 ;===============================================================================
 ;    PARAMETERS:
@@ -440,9 +388,7 @@ vga_writestring_withcolor:
 ;    Print a decimal number.
 ;===============================================================================
 vga_put_dec:
-    push    ebp
-    mov     ebp, esp
-    
+    beginfun
     sub     esp, 4
 
     %define num [ebp+8]
@@ -486,10 +432,7 @@ vga_put_dec:
 
     %undef  num
     %undef  counter
-
-    mov     esp, ebp
-    pop     ebp
-    ret
+    endfun
 
 ;===============================================================================
 ;    PARAMETERS:
@@ -498,9 +441,7 @@ vga_put_dec:
 ;    Print an unsigned hex number.
 ;===============================================================================
 vga_put_unsigned_hex:
-    push    ebp
-    mov     ebp, esp
-    
+    beginfun
     sub     esp, 4
 
     %define num [ebp+8]
@@ -545,10 +486,7 @@ vga_put_unsigned_hex:
 
     %undef  num
     %undef  counter
-
-    mov     esp, ebp
-    pop     ebp
-    ret
+    endfun
 ;===============================================================================
 ;    PARAMETERS:
 ;        None
@@ -556,15 +494,10 @@ vga_put_unsigned_hex:
 ;    Print a newline in the VGA terminal.
 ;===============================================================================
 vga_put_newline:
-    push    ebp
-    mov     ebp, esp
-
+    beginfun
     mov     eax, [global_term_row]
     inc     eax
     mov     dword [global_term_row], eax
 
     mov     dword [global_term_col], 0
-    
-    mov     esp, ebp
-    pop     ebp
-    ret
+    endfun

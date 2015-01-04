@@ -1,3 +1,5 @@
+%include "src/defs.asm"
+
 BITS 32
 
 MEM_MAGIC_EAX   equ     0xE820
@@ -19,6 +21,14 @@ section .data
     st_mmap_length:  db  'mmap_length:  ',0
     st_mmap_addr:    db  'mmap_addr:    ',0
 
+    st_mmap:           db  '===Memory Map===',0
+    st_mmap_size:      db  'size:           ',0
+    st_mmap_base_low:  db  'base_addr_low:  ',0
+    st_mmap_base_high: db  'base_addr_high: ',0
+    st_mmap_len_low:   db  'length_low:     ',0
+    st_mmap_len_high:  db  'length_high:    ',0
+    st_mmap_type:      db  'type:           ',0
+
 section .text
     global map_mem
     extern vga_put_unsigned_hex
@@ -33,10 +43,67 @@ section .text
 ;        int magic
 ;===============================================================================
 map_mem:
-    push    ebp
-    mov     ebp, esp
+    beginfun
+    mov     edx, [ebp+8]
 
-    ;EDX = &mbt
+    ;push    dword edx
+    ;call    dump_multiboot_info
+    ;add     esp, 4
+
+    add     edx, 48
+
+    push    dword [edx]
+    call    num_memorymaps
+    add     esp, 4
+
+    endfun
+
+;===============================================================================
+;    PARAMETERS:
+;        memory_map* mmap_addr
+;        
+;    RETURNS:
+;        The number of memory map entries to expect
+;===============================================================================
+num_memorymaps:
+    beginfun
+    mov     edx, [ebp+8]
+
+    %macro mmap_info_line 3
+    push    edx
+    push    dword [%1]
+    push    dword st_mmap_%3
+    call    vga_writestring
+    add     esp, 4
+    call    vga_put_%2
+    add     esp, 4
+    call    vga_put_newline
+    pop     edx
+    %endmacro
+
+    %macro mmap_info 0
+    mmap_info_line  edx,    dec,          size
+    mmap_info_line  edx+4,  unsigned_hex, base_low
+    mmap_info_line  edx+8,  unsigned_hex, base_high
+    mmap_info_line  edx+12, unsigned_hex, len_low
+    mmap_info_line  edx+16, unsigned_hex, len_high
+    mmap_info_line  edx+20, unsigned_hex, type
+    %endmacro
+
+    add     edx, 72
+    mmap_info
+    call    vga_put_newline
+    ;add     edx, 24
+    ;mmap_info
+    ;call    vga_put_newline
+    ;add     edx, 24
+    ;mmap_info
+    ;call    vga_put_newline
+
+    endfun
+
+dump_multiboot_info:
+    beginfun
     mov     edx, [ebp+8]
     %define  flags        edx
     %define  mem_lower    edx+4
@@ -48,123 +115,39 @@ map_mem:
     %define  mmap_length  edx+44
     %define  mmap_addr    edx+48
 
-    push    edx
-    push    dword st_flags
-    call    vga_writestring
-    add     esp, 4
-    pop     edx
-    push    edx
-    mov     eax, [flags]
-    push    dword eax
-    call    vga_put_unsigned_hex
-    add     esp, 4
-    call    vga_put_newline
-    pop     edx
+    %macro multibootline 3
+        push    edx
+        push    dword %3
+        call    vga_writestring
+        add     esp, 4
+        pop     edx
+        push    edx
+        mov     eax, [%1]
+        push    dword eax
+        call    vga_put_%2
+        add     esp, 4
+        call    vga_put_newline
+        pop     edx
+    %endmacro
 
-    push    edx
-    push    dword st_mem_lower
-    call    vga_writestring
-    add     esp, 4
-    pop     edx
-    push    edx
-    mov     eax, [mem_lower]
-    push    dword eax
-    call    vga_put_unsigned_hex
-    add     esp, 4
-    call    vga_put_newline
-    pop     edx
+    multibootline  flags,        unsigned_hex, st_flags
+    multibootline  mem_lower,    unsigned_hex, st_mem_lower
+    multibootline  mem_upper,    unsigned_hex, st_mem_upper
+    multibootline  boot_device,  unsigned_hex, st_boot_device
+    multibootline  cmdline,      unsigned_hex, st_cmdline
+    multibootline  mods_count,   unsigned_hex, st_mods_count
+    multibootline  mods_addr,    unsigned_hex, st_mods_addr
+    multibootline  mmap_length,  dec,          st_mmap_length
+    multibootline  mmap_addr,    unsigned_hex, st_mmap_addr
 
-    push    edx
-    push    dword st_mem_upper
-    call    vga_writestring
-    add     esp, 4
-    pop     edx
-    push    edx
-    mov     eax, [mem_upper]
-    push    dword eax
-    call    vga_put_unsigned_hex
-    add     esp, 4
-    call    vga_put_newline
-    pop     edx
+    %undef flags
+    %undef mem_lower
+    %undef mem_upper
+    %undef boot_device
+    %undef cmdline
+    %undef mods_count
+    %undef mods_addr
+    %undef mmap_length
+    %undef mmap_addr
 
-    push    edx
-    push    dword st_boot_device
-    call    vga_writestring
-    add     esp, 4
-    pop     edx
-    push    edx
-    mov     eax, [boot_device]
-    push    dword eax
-    call    vga_put_unsigned_hex
-    add     esp, 4
-    call    vga_put_newline
-    pop     edx
-
-    push    edx
-    push    dword st_cmdline
-    call    vga_writestring
-    add     esp, 4
-    pop     edx
-    push    edx
-    mov     eax, [cmdline]
-    push    dword eax
-    call    vga_put_unsigned_hex
-    add     esp, 4
-    call    vga_put_newline
-    pop     edx
-
-    push    edx
-    push    dword st_mods_count
-    call    vga_writestring
-    add     esp, 4
-    pop     edx
-    push    edx
-    mov     eax, [mods_count]
-    push    dword eax
-    call    vga_put_unsigned_hex
-    add     esp, 4
-    call    vga_put_newline
-    pop     edx
-
-    push    edx
-    push    dword st_mods_addr
-    call    vga_writestring
-    add     esp, 4
-    pop     edx
-    push    edx
-    mov     eax, [mods_addr]
-    push    dword eax
-    call    vga_put_unsigned_hex
-    add     esp, 4
-    call    vga_put_newline
-    pop     edx
-
-    push    edx
-    push    dword st_mmap_length
-    call    vga_writestring
-    add     esp, 4
-    pop     edx
-    push    edx
-    mov     eax, [mmap_length]
-    push    dword eax
-    call    vga_put_dec
-    add     esp, 4
-    call    vga_put_newline
-    pop     edx
-
-    push    edx
-    push    dword st_mmap_addr
-    call    vga_writestring
-    add     esp, 4
-    pop     edx
-    push    edx
-    mov     eax, [mmap_addr]
-    push    dword eax
-    call    vga_put_unsigned_hex
-    add     esp, 4
-    call    vga_put_newline
-    pop     edx
-
-    mov     esp, ebp
-    pop     ebp
-    ret
+    endfun

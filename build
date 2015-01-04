@@ -47,5 +47,5 @@ if [ $SUCCESS -eq 0 ]; then
     exit 1
 fi
 
-echo "===> Cleaning up..."
-rm obj/*.o
+#echo "===> Cleaning up..."
+#rm obj/*.o
